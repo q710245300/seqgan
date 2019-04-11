@@ -21,13 +21,15 @@ class Config(object):
     source_vocab_size = None
     target_vocab_size = None
 
-
+# 构建样本集train_set
+# 返回两个大小为10000, 内容分别为123，数字的英文翻译的数据集
 def load_data(path):
     num2en = {"1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven", "8": "eight",
               "9": "nine", "0": "zero"}
     docs_source = []
     docs_target = []
     for i in range(10000):
+        # 序列为长度在1到8之间的0-9的数字
         doc_len = random.randint(1, 8)
         doc_source = []
         doc_target = []
@@ -40,7 +42,8 @@ def load_data(path):
 
     return docs_source, docs_target
 
-
+# 建立词汇索引表
+# 针对当前任务即为，创建序列中所有数字和单词的索引
 def make_vocab(docs):
     w2i = {"_PAD": 0, "_GO": 1, "_EOS": 2}
     i2w = {0: "_PAD", 1: "_GO", 2: "_EOS"}
@@ -66,24 +69,30 @@ def doc_to_seq(docs):
         seqs.append(seq)
     return seqs, w2i, i2w
 
-
+# 从样本集中抽取batch
 def get_batch(docs_source, w2i_source, docs_target, w2i_target, batch_size):
     ps = []
+    # 生成用于抽取训练集的索引
+    # ps是一个batch_size大小的list,每个数据是一个0-(训练集长度-1)的随机数,在训练中直接用该随机数作为索引抽取batch
     while len(ps) < batch_size:
         ps.append(random.randint(0, len(docs_source) - 1))
 
     source_batch = []
     target_batch = []
 
+    # 所有随机的序列的长度的集合
     source_lens = [len(docs_source[p]) for p in ps]
     target_lens = [len(docs_target[p]) + 1 for p in ps]
 
+    # 找出其中最长的那个
     max_source_len = max(source_lens)
     max_target_len = max(target_lens)
 
     for p in ps:
+        # 按照所有可能的batch中最长的序列的长度将每个序列的末尾补上占位符对应的索引i
         source_seq = [w2i_source[w] for w in docs_source[p]] + [w2i_source["_PAD"]] * (
                     max_source_len - len(docs_source[p]))
+        # target不光要加上占位符还要加上EOS的符号表示结束
         target_seq = [w2i_target[w] for w in docs_target[p]] + [w2i_target["_PAD"]] * (
                     max_target_len - 1 - len(docs_target[p])) + [w2i_target["_EOS"]]
         source_batch.append(source_seq)
@@ -96,7 +105,9 @@ if __name__ == "__main__":
 
     print("(1)load data......")
     docs_source, docs_target = load_data("")
+    # source本代码中表示样本
     w2i_source, i2w_source = make_vocab(docs_source)
+    # target本代码中表示label
     w2i_target, i2w_target = make_vocab(docs_target)
 
     print("(2) build model......")
@@ -107,6 +118,7 @@ if __name__ == "__main__":
 
     print("(3) run model......")
     batches = 3000
+    # 每100个batches输出一次
     print_every = 100
 
     with tf.Session(config=tf_config) as sess:
@@ -130,6 +142,7 @@ if __name__ == "__main__":
             loss, _ = sess.run([model.loss, model.train_op], feed_dict)
             total_loss += loss
 
+            # 每隔print_every个batch输出一次
             if batch % print_every == 0 and batch > 0:
                 print_loss = total_loss if batch == 0 else total_loss / print_every
                 losses.append(print_loss)
