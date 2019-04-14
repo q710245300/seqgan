@@ -43,7 +43,7 @@ def load_data(path):
     return docs_source, docs_target
 
 # 建立词汇索引表
-# 针对当前任务即为，创建序列中所有数字和单词的索引
+# 针对当前任务即为，创建序列docs中所有数字和单词的索引
 def make_vocab(docs):
     w2i = {"_PAD": 0, "_GO": 1, "_EOS": 2}
     i2w = {0: "_PAD", 1: "_GO", 2: "_EOS"}
@@ -70,6 +70,7 @@ def doc_to_seq(docs):
     return seqs, w2i, i2w
 
 # 从样本集中抽取batch
+# batch是序列的索引表示方式
 def get_batch(docs_source, w2i_source, docs_target, w2i_target, batch_size):
     ps = []
     # 生成用于抽取训练集的索引
@@ -90,11 +91,11 @@ def get_batch(docs_source, w2i_source, docs_target, w2i_target, batch_size):
 
     for p in ps:
         # 按照所有可能的batch中最长的序列的长度将每个序列的末尾补上占位符对应的索引i
-        source_seq = [w2i_source[w] for w in docs_source[p]] + [w2i_source["_PAD"]] * (
-                    max_source_len - len(docs_source[p]))
+        source_seq = [w2i_source[w] for w in docs_source[p]] + \
+                     [w2i_source["_PAD"]] * (max_source_len - len(docs_source[p]))
         # target不光要加上占位符还要加上EOS的符号表示结束
-        target_seq = [w2i_target[w] for w in docs_target[p]] + [w2i_target["_PAD"]] * (
-                    max_target_len - 1 - len(docs_target[p])) + [w2i_target["_EOS"]]
+        target_seq = [w2i_target[w] for w in docs_target[p]] + \
+                     [w2i_target["_PAD"]] * (max_target_len - 1 - len(docs_target[p])) + [w2i_target["_EOS"]]
         source_batch.append(source_seq)
         target_batch.append(target_seq)
 
