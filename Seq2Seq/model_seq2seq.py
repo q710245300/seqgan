@@ -75,6 +75,7 @@ class Seq2seq(object):
                             name='decoder_out_W')
             b = tf.Variable(tf.zeros([config.target_vocab_size]), dtype=tf.float32, name="decoder_out_b")
 
+            # 因为传统的
             def loop_fn(time, previous_output, previous_state, previous_loop_state):
                 if previous_state is None:  # time step == 0
                     initial_elements_finished = (0 >= self.seq_targets_length)  # all False at the initial step
