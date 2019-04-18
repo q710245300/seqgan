@@ -1,5 +1,8 @@
 import numpy as np
 
+'''
+主要用于Generator的预训练以及计算Generator和Oracle model的相似性。
+'''
 class Gen_Data_loader():
     def __init__(self,batch_size):
         self.batch_size = batch_size

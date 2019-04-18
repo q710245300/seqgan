@@ -23,6 +23,9 @@ class Generator(object):
         self.start_token = tf.constant(config.start_token,dtype=tf.int32,shape=[self.batch_size])
         self.initializer = tf.random_normal_initializer(mean=0,stddev=0.1)
 
+    '''
+    输入阶段名称，建立对应的placeholder
+    '''
     def build_input(self,name):
         """ Buid input placeholder
 
@@ -35,8 +38,10 @@ class Generator(object):
             self.rewards (if name == 'adversarial')
         """
         assert name in ['pretrain','adversarial','sample']
+        # 按理来说使用交叉熵计算损失时，输入应该是
         if name == 'pretrain':
             self.input_seqs_pre = tf.placeholder(tf.int32,[None,self.sequence_length],name='input_seqs_pre')
+            # 形状和input_seqs_pre一样，但是全1，没看出来有什么用
             self.input_seqs_mask = tf.placeholder(tf.float32,[None,self.sequence_length],name='input_seqs_mask')
 
         elif name == 'adversarial':
@@ -57,15 +62,18 @@ class Generator(object):
         self.build_input(name='pretrain')
         self.pretrained_loss = 0.0
         with tf.variable_scope('teller'):
-            with tf.variable_scope("lstm"):
+            with tf.variable_scope("lstm_cell"):
                 lstm1 = tf.nn.rnn_cell.LSTMCell(self.hidden_dim,state_is_tuple=True)
+            # embedding层
             with tf.variable_scope("embedding"):
                 word_emb_W = tf.get_variable("word_emb_W",[self.num_emb,self.emb_dim],"float32",self.initializer)
+            # 网络输出的embedding转化为num
             with tf.variable_scope("output"):
                 output_W = tf.get_variable("output_W",[self.emb_dim,self.num_emb],"float32",self.initializer)
 
 
             with tf.variable_scope("lstm"):
+                # 将输入经过embedding层，？？？序列中每个词单独经过lstm？
                 for j in range(self.sequence_length):
                     if j==0:
                         lstm1_in = tf.nn.embedding_lookup(word_emb_W,self.start_token)
@@ -74,13 +82,17 @@ class Generator(object):
 
 
                     if j == 0:
+                        # initial_state
                         state = lstm1.zero_state(self.batch_size,tf.float32)
 
+                    # final_state
                     output,state = lstm1(lstm1_in,state,scope=tf.get_variable_scope())
 
+                    # 输出经过反embedding，也没太看懂
                     logits = tf.matmul(output,output_W)
                     # 计算每一个lstm的损失
                     pretrained_loss_t = tf.nn.sparse_softmax_cross_entropy_with_logits(logits= logits,labels=self.input_seqs_pre[:,j])
+                    # 没看出来有什么用，为什么要乘一
                     pretrained_loss_t = tf.reduce_sum(tf.multiply(pretrained_loss_t,self.input_seqs_mask[:,j]))
                     self.pretrained_loss += pretrained_loss_t
                     word_predict = tf.to_int32(tf.argmax(logits,1))
@@ -138,7 +150,7 @@ class Generator(object):
                     * tf.log(tf.clip_by_value(tf.reshape(self.softmax_list_reshape,[-1,self.num_emb]),1e-20,1.0)),1
                 ) * tf.reshape(self.rewards,[-1]))
 
-
+    # 为了用mc方法计算D值，穷举用的
     def build_sample_network(self):
         """ Buid sampling network
 

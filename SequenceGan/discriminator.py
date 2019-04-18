@@ -1,6 +1,9 @@
 import tensorflow as tf
 import numpy as np
 
+'''
+不带激活函数的一层全连接层
+'''
 def linear(input_,output_size,scope=None):
     '''
         Linear map: output[k] = sum_i(Matrix[k, i] * input_[i] ) + Bias[k]
@@ -23,11 +26,10 @@ def linear(input_,output_size,scope=None):
         raise ValueError("Linear expects shape[1] of arguments: %s" % str(shape))
     input_size = shape[1]
     with tf.variable_scope(scope or "SimpleLinear"):
-        matrix = tf.get_variable("Matrix",[output_size,input_size],dtype=input_.dtype)
+        matrix = tf.get_variable("Matrix",[input_size, output_size],dtype=input_.dtype)
         bias_term = tf.get_variable("Bias",[output_size],dtype=input_.dtype)
 
-    return tf.matmul(input_,tf.transpose(matrix)) + bias_term
-
+    return tf.matmul(input_,matrix) + bias_term
 
 def highway(input_,size,num_layers=1,bias = -2.0,f = tf.nn.relu,scope='Highway'):
     """Highway Network (cf. http://arxiv.org/abs/1505.00387).
@@ -45,6 +47,7 @@ def highway(input_,size,num_layers=1,bias = -2.0,f = tf.nn.relu,scope='Highway')
             input_ = output
 
     return output
+
 
 class Discriminator(object):
     """
@@ -71,10 +74,13 @@ class Discriminator(object):
     def build_discriminator(self):
         with tf.variable_scope('discriminator'):
             with tf.name_scope('embedding'):
-                self.W = tf.Variable(tf.random_normal([self.vocab_size,self.embedding_size],-1.0,1.0),name='W')
-                self.embedded_chars = tf.nn.embedding_lookup(self.W,self.input_x) # batch * seq * emb_size
+                # embedding层
+                self.embedding = tf.Variable(tf.random_normal([self.vocab_size,self.embedding_size],-1.0,1.0),name='W')
+                # 输入input经过embedding层
+                self.embedded_chars = tf.nn.embedding_lookup(self.embedding,self.input_x) # batch * seq * emb_size
                 self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars,-1) # batch * seq * emb_size * 1
 
+            # 横向铺len(filter_size)个卷积层
             pooled_outputs = []
             for filter_size,num_filter in zip(self.filter_sizes,self.num_filters):
                 with tf.name_scope('conv_maxpool-%s' % filter_size):
@@ -89,6 +95,7 @@ class Discriminator(object):
                         name='conv'
                     )
                     h = tf.nn.relu(tf.nn.bias_add(conv,b),name='relu') # batch * seq - filter_size + 1 * 1 * num_filter
+                    # text_cnn的ksize就是[1, n, 1, 1]吗，是因为输入时序列吗
                     pooled = tf.nn.max_pool(
                         h,
                         ksize = [1,self.sequence_length - filter_size + 1,1,1],
@@ -101,6 +108,7 @@ class Discriminator(object):
 
 
             num_filters_total = sum(self.num_filters)
+            # 这两行感觉有点没用啊
             self.h_pool = tf.concat(pooled_outputs,3)
             self.h_pool_flat = tf.reshape(self.h_pool,[-1,num_filters_total]) # batch * sum_num_fiters
 
@@ -115,6 +123,7 @@ class Discriminator(object):
                 b = tf.Variable(tf.constant(0.1,shape=[self.num_classes]),name='b')
                 self.l2_loss += tf.nn.l2_loss(W)
                 self.l2_loss += tf.nn.l2_loss(b)
+                # 输出层
                 self.scores = tf.nn.xw_plus_b(self.h_drop,W,b,name='scores') # batch * num_classes
                 self.ypred_for_auc = tf.nn.softmax(self.scores)
                 self.predictions = tf.argmax(self.scores,1,name='predictions')

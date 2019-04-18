@@ -26,7 +26,7 @@ if __name__ == "__main__":
     config = Config()
     config.source_vocab_size = len(w2i_source)
     config.target_vocab_size = len(w2i_target)
-    model = Seq2seq(config=config, w2i_target=w2i_target, useTeacherForcing=False, useAttention=True, useBeamSearch=3)
+    model = Seq2seq(config=config, useTeacherForcing=False, useAttention=True, useBeamSearch=3)
 
     print("(3) run model......")
     print_every = 100

@@ -14,12 +14,15 @@ tf_config.gpu_options.allow_growth = True
 
 
 class Config(object):
-    embedding_dim = 100
-    hidden_dim = 50
-    batch_size = 128
-    learning_rate = 0.005
-    source_vocab_size = None
-    target_vocab_size = None
+    def __init__(self, w2i_source, w2i_target):
+        self.embedding_dim = 100
+        self.hidden_dim = 50
+        self.batch_size = 128
+        self.learning_rate = 0.005
+        self.w2i_source = w2i_source
+        self.w2i_target = w2i_target
+        self.source_vocab_size = len(self.w2i_source)
+        self.target_vocab_size = len(self.w2i_target)
 
 # 构建样本集train_set
 # 返回两个大小为10000, 内容分别为123，数字的英文翻译的数据集
@@ -112,10 +115,10 @@ if __name__ == "__main__":
     w2i_target, i2w_target = make_vocab(docs_target)
 
     print("(2) build model......")
-    config = Config()
-    config.source_vocab_size = len(w2i_source)
-    config.target_vocab_size = len(w2i_target)
-    model = Seq2seq(config=config, w2i_target=w2i_target, useTeacherForcing=True, useAttention=True, useBeamSearch=1)
+    config = Config(w2i_source, w2i_target)
+    # config.source_vocab_size = len(w2i_source)
+    # config.target_vocab_size = len(w2i_target)
+    model = Seq2seq(config=config, useTeacherForcing=True, useAttention=True, useBeamSearch=1)
 
     print("(3) run model......")
     batches = 3000
